@@ -4,6 +4,15 @@ import numpy as np
 from math import ceil, sqrt
 
 
+def count_mkv_files(directory):
+    count = 0
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.mkv'):
+                count += 1
+    return count
+
+
 def create_dirs(base_path, dir_names):
     for dir_name in dir_names:
         path = os.path.join(base_path, dir_name)
@@ -17,6 +26,10 @@ def resolve_path(relative_path):
 
 def extract_frames(video_path, frame_rate, max_frames=81):
     video = cv2.VideoCapture(video_path)
+    if not video.isOpened():
+        print(f"Error: Cannot open video {video_path}")
+        return []
+
     fps = video.get(cv2.CAP_PROP_FPS)
     interval = int(fps / frame_rate)
     frames = []
@@ -30,12 +43,14 @@ def extract_frames(video_path, frame_rate, max_frames=81):
         count += 1
 
     video.release()
+    if not frames:
+        print(f"Error: No frames extracted from video {video_path}")
     return frames
 
 
 def create_mosaic(frames, output_path):
     if not frames:
-        print(f"No frames extracted for {output_path}")
+        print(f"Skipping mosaic creation for {output_path} due to no frames")
         return
 
     frame_count = len(frames)
@@ -65,20 +80,38 @@ def process_videos(input_dir, output_dir, frame_rate=2, max_frames=81):
         output_category_path = os.path.join(output_dir, category)
         os.makedirs(output_category_path, exist_ok=True)
 
-        for video_file in os.listdir(category_path):
-            if video_file.endswith('.mkv'):
-                video_path = os.path.join(category_path, video_file)
-                print(f"Processing video: {video_path}")
+        video_files = [f for f in os.listdir(category_path) if f.endswith('.mkv')]
+        video_count = len(video_files)
+        print(f"Total .mkv files to process in {category}: {video_count}")
 
-                frames = extract_frames(video_path, frame_rate, max_frames)
-                if frames:
-                    mosaic_image_path = os.path.join(output_category_path, f"{os.path.splitext(video_file)[0]}.jpg")
-                    create_mosaic(frames, mosaic_image_path)
-                else:
-                    print(f"No frames extracted for video: {video_path}")
+        processed_count = 0
+        for video_file in video_files:
+            video_path = os.path.join(category_path, video_file)
+            print(f"Processing video: {video_path}")
+
+            frames = extract_frames(video_path, frame_rate, max_frames)
+            if frames:
+                mosaic_image_path = os.path.join(output_category_path, f"{os.path.splitext(video_file)[0]}.jpg")
+                create_mosaic(frames, mosaic_image_path)
+                processed_count += 1
+            else:
+                print(f"No frames extracted for video: {video_path}")
+
+        print(f"Total videos processed in category {category}: {processed_count}")
+        print(f"Total videos skipped in category {category}: {video_count - processed_count}")
 
 
 # Example usage with relative paths
 source_dir = resolve_path('../data/split_data')
 output_dir = resolve_path('../data/training_data')
 process_videos(source_dir, output_dir)
+
+
+mefo_dir = os.path.join(source_dir, '../MEFO/initial_split/test')
+negativ_dir = os.path.join(source_dir, '../negativ/initial_split/test')
+
+mefo_count = count_mkv_files(mefo_dir)
+negativ_count = count_mkv_files(negativ_dir)
+
+print(f"Total .mkv files in MEFO: {mefo_count}")
+print(f"Total .mkv files in negativ: {negativ_count}")

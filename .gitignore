@@ -1,3 +1,7 @@
+# Ignore video files
+data/raw_videos/*
+data/split_data/*
+
 *.swp
 package-lock.json
 __pycache__

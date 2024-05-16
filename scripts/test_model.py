@@ -1,14 +1,18 @@
 import boto3
 import os
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
 
 def create_dirs(base_path, dir_names):
     for dir_name in dir_names:
         path = os.path.join(base_path, dir_name)
         os.makedirs(path, exist_ok=True)
 
+
 def resolve_path(relative_path):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_dir, relative_path)
+
 
 # Start the model function
 def start_model(project_arn, model_arn, version_name, min_inference_units):
@@ -26,13 +30,12 @@ def start_model(project_arn, model_arn, version_name, min_inference_units):
         print(e)
     print('Model started.')
 
-# Run inference on images
+
+# Run inference on images and compute metrics
 def run_inference_on_images(model_arn, images_path):
     client = boto3.client('rekognition')
-    misclassified_mefo = 0
-    misclassified_negativ = 0
-    total_mefo = 0
-    total_negativ = 0
+    y_true = []
+    y_pred = []
 
     for category in ['MEFO', 'negativ']:
         category_path = os.path.join(images_path, category)
@@ -47,21 +50,28 @@ def run_inference_on_images(model_arn, images_path):
                         )
                     labels = [label['Name'] for label in response['CustomLabels']]
                     print(f'Image: {image_path}, Labels: {labels}')
-                    if category == 'MEFO':
-                        total_mefo += 1
-                        if 'mefo' not in labels:
-                            misclassified_mefo += 1
-                    elif category == 'negativ':
-                        total_negativ += 1
-                        if 'negativ' not in labels:
-                            misclassified_negativ += 1
+                    y_true.append(category.lower())
+                    if 'mefo' in labels:
+                        y_pred.append('mefo')
+                    elif 'negativ' in labels:
+                        y_pred.append('negativ')
+                    else:
+                        y_pred.append('unknown')
                 except client.exceptions.ImageTooLargeException:
                     print(f'Error: Image size is too large for {image_path}')
                 except Exception as e:
                     print(f'Error: {e} for {image_path}')
 
-    print(f'Total MEFO images: {total_mefo}, Misclassified MEFO images: {misclassified_mefo}')
-    print(f'Total NEGATIV images: {total_negativ}, Misclassified NEGATIV images: {misclassified_negativ}')
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, average='weighted', zero_division=0)
+    recall = recall_score(y_true, y_pred, average='weighted', zero_division=0)
+    f1 = f1_score(y_true, y_pred, average='weighted', zero_division=0)
+
+    print(f'Accuracy: {accuracy:.4f}')
+    print(f'Precision: {precision:.4f}')
+    print(f'Recall: {recall:.4f}')
+    print(f'F1 Score: {f1:.4f}')
+
 
 def main():
     # Start the model
@@ -74,6 +84,7 @@ def main():
     # Run inference
     images_path = resolve_path('../data/testing_data')
     run_inference_on_images(model_arn, images_path)
+
 
 if __name__ == "__main__":
     main()

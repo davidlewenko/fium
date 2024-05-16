@@ -4,6 +4,8 @@ import numpy as np
 from math import ceil, sqrt
 
 
+train_or_test = 'test'
+
 def count_mkv_files(directory):
     count = 0
     for root, dirs, files in os.walk(directory):
@@ -70,7 +72,7 @@ def create_mosaic(frames, output_path):
 def process_videos(input_dir, output_dir, frame_rate=2, max_frames=81):
     categories = ['MEFO', 'negativ']
     for category in categories:
-        category_path = os.path.join(input_dir, category, 'initial_split/test')
+        category_path = os.path.join(input_dir, category, f'initial_split/{train_or_test}')
         print(f"Processing category: {category}, path: {category_path}")
 
         if not os.path.exists(category_path):
@@ -103,7 +105,8 @@ def process_videos(input_dir, output_dir, frame_rate=2, max_frames=81):
 
 # Example usage with relative paths
 source_dir = resolve_path('../data/split_data')
-output_dir = resolve_path('../data/training_data')
+#output_dir = resolve_path('../data/training_data')
+output_dir = resolve_path('../data/testing_data')
 process_videos(source_dir, output_dir)
 
 
